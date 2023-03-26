@@ -1,0 +1,1 @@
+这是一个局域网大厅和房间的demo，如果要添加游戏开始能力，则请在room类下，init方法内，对开始游戏button的actionlistener，添加相应接口。
