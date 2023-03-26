@@ -4,6 +4,8 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.StringJoiner;
 
+import javax.swing.plaf.synth.SynthStyle;
+
 // public class MaintainArray extends ArrayList{
 public class MaintainArray {
     //房间之间自动维护、同步的string 数组
@@ -14,7 +16,7 @@ public class MaintainArray {
     static MaintainArray[] maintainArrays=new MaintainArray[10];//最多十个维护数组
     static int num_array=0;//独一无二的数组编号
 
-    static boolean is_run=false;//用于判断维护接收的线程是否被启动
+    // static boolean is_run=false;//用于判断维护接收的线程是否被启动
 
     public static MaintainArray ip_list=new MaintainArray();//房间内所有ip的列表
     // ArrayList<String> local_ip_list;//本地IP列表
@@ -28,7 +30,7 @@ public class MaintainArray {
     // public MaintainArray(ArrayList<String> ip_list){
     public MaintainArray(){
         arrayList=new ArrayList<String>();
-
+        
         // local_ip_list=ip_list;//给本地iplist赋值
 
         //给自己赋编号值
@@ -60,6 +62,10 @@ public class MaintainArray {
         return my_array_num;
     }
 
+    public void clear(){
+        arrayList.clear();
+        Msg_Maintain="Triple/MaintainArray/"+my_array_num;
+    }
     //返回string
     public String get(int index){
         return arrayList.get(index);
@@ -68,7 +74,7 @@ public class MaintainArray {
     public void set(int index,String s){
         arrayList.set(index, s);
         String spl[]=Msg_Maintain.split("/");
-        spl[index]=s;
+        spl[index+3]=s;
 
         
         StringJoiner sj = new StringJoiner("/");
@@ -76,6 +82,7 @@ public class MaintainArray {
             sj.add(str);
         }
         Msg_Maintain=sj.toString();
+        System.out.println("缓存string内容："+Msg_Maintain);
         Send_Maintain();//发送缓存数组出去
     }
 
@@ -86,6 +93,31 @@ public class MaintainArray {
         Send_Maintain();//发送缓存数组
         System.out.println("发送MSG："+Msg_Maintain);
     }
+
+    //remove
+    public void remove(int index){
+        arrayList.remove(index);
+        String spl[]=Msg_Maintain.split("/");
+        String new_spl[]=new String[spl.length-1];
+
+        // spl[index+3]="";//这里可能会出问题
+        for (int i = 0; i < spl.length - 1; i++) {
+            if(i<index+3)
+                new_spl[i] = spl[i];
+            else
+                new_spl[i]=spl[i+1];
+        }
+
+
+        StringJoiner sj = new StringJoiner("/");
+        for (String str : new_spl) {
+            sj.add(str);
+        }
+        Msg_Maintain=sj.toString();
+        System.out.println("缓存string内容："+Msg_Maintain);
+        Send_Maintain();//发送缓存数组出去
+    }
+    
 
     //维护线程
     static class MaintainThread extends Thread{
@@ -130,7 +162,7 @@ public class MaintainArray {
                                     MaintainArray.maintainArrays[k].arrayList.add(spl[i]);//收到的信息，添加进目标数组
                                     MaintainArray.maintainArrays[k].Msg_Maintain=msg;//发送的赋值
                                 }
-                                System.out.println("收到数组，并且处理刷新了");
+                                System.out.println("收到数组"+msg+"，并且处理刷新了");
                                 break;
                             //基本思想为：在所有自维护数组的数组里遍历找到要操作的数组，然后清空他，把所有收到的信息添加进这个数组
                             }
@@ -151,6 +183,7 @@ public class MaintainArray {
                     }
                 }
         }
+    
     }
 
     // UDP发送接口

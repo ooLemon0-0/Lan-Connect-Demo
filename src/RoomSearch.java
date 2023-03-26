@@ -159,6 +159,7 @@ public class RoomSearch extends JFrame{
     
     //等待线程，UDP端口请求
     class WaitingThread extends Thread {
+        boolean is_ready_join=false;
         // 等待线程，用于接收呼叫
         public WaitingThread() {}
         public void run() {
@@ -231,17 +232,37 @@ public class RoomSearch extends JFrame{
             if(in_use){//如果大厅启用
                 String spl[]=rs.split("/");
                 if(spl[0].equals("Triple")){//如果是游戏信息
-                    if(spl[1].equals("RoomIPDetail")){//如果是房间详细信息
+                    if(spl[1].equals("ConfirmJoin")){//如果是房间详细信息
                         //把所有房间详细信息插入
-                        room.player_ip_information.clear();//清空已有的房间IP表
-                        for(int i=2;i<spl.length;i++){
-                            if(i>=room.player_ip_information.size()){
-                                room.player_ip_information.add(spl[i]);
-                            }
-                            else
-                            room.player_ip_information.set(i-2, spl[i]);
-                        }
+                        // MaintainArray.ip_list.clear();//清空已有的房间IP表
+                        // for(int i=2;i<spl.length;i++){
+                        //     if(i>=MaintainArray.ip_list.size()){
+                        //         MaintainArray.ip_list.add(spl[i]);
+                        //     }
+                        //     else
+                        //     MaintainArray.ip_list.set(i-2, spl[i]);
+                        // }
 
+                        //因为UDP协议不确定性，且如果房间某项信息没有收到，其长度会只有1
+                        //所以，采用忙等判断，是否所有数组的房间信息都更新了，如果有一个没更新就忙等
+                        //同时在自维护数组中存在定时同步机制，如果丢包，只需要等待下一段时间的发送即可
+                        
+                        //如果存在任何一个自维护数组，只有一个元素，则忙等
+                        while(true){
+                           int i=0;
+                           if(i<MaintainArray.maintainArrays.length&&MaintainArray.maintainArrays[i].arrayList.size()<2){
+                                try {
+                                    Thread.sleep(500);
+                                } catch (InterruptedException e) {
+                                  
+                                    e.printStackTrace();
+                                }
+                                continue;
+                           }
+                           i++;
+                           break;
+                        }
+                        //设置状态为准备加入房间
                         //接收房间IP详细信息后，启用房间
                         room.tag=1;//tag设置为客人
                         ban_use(false);//禁用大厅
@@ -250,6 +271,7 @@ public class RoomSearch extends JFrame{
                         room.my_name=player_name.getText();
                         room.host_name=room.player_name_information.get(0);//设置房间主人
                         room.fresh_table();
+                        is_ready_join=false;//重置就绪状态
                     }
                     
                 }

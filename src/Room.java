@@ -32,14 +32,18 @@ public class Room extends JFrame {
     String my_name;// 玩家名字
     String my_IP;// 玩家名字
 
-    ArrayList<String> player_name_information;
-    ArrayList<String> player_ip_information;
+    // ArrayList<String> player_name_information;
+    MaintainArray player_name_information;
+    // ArrayList<String> player_ip_information;
+    
+
+    int num_id;//房间内ID
 
     DatagramSocket soc;// 套接字接收端口
 
     public JTable jt;
 
-    Synchronization synchronization;
+    // Synchronization synchronization;
 
     JTextField chat_Send;// 发送框
     JTextArea chat_Area;// 显示区
@@ -75,18 +79,23 @@ public class Room extends JFrame {
     void init() {
         test_array=new MaintainArray();
         test_array.add("0");
+        test_array.add("0");
 
         // 房主姓名初始化
         host_name = roomsearch.player_name.getText();
         my_name = host_name;
+        num_id=0;//初始化自己的ID为1
         // 初始化房间信息
-        player_name_information = new ArrayList<String>();
+        // player_name_information = new ArrayList<String>();
+        player_name_information=new MaintainArray();
         player_name_information.add(host_name);
-        player_ip_information = new ArrayList<String>();
+        // player_ip_information = new ArrayList<String>();
+       
         try {
             String so[] = InetAddress.getLocalHost().toString().split("/");
             my_IP = so[1];// myip赋值
-            player_ip_information.add(so[1]);
+            // player_ip_information.add(so[1]);
+            MaintainArray.ip_list.add(so[1]);
         } catch (UnknownHostException e) {
             e.printStackTrace();
         }
@@ -139,8 +148,8 @@ public class Room extends JFrame {
         button_start.addActionListener(new ActionListener() {
             public void actionPerformed(final ActionEvent e) {
                 //测试
-                MaintainArray.ip_list.Set_Array(player_ip_information);//测试ip赋值
-                System.out.println("ip赋值");
+                // MaintainArray.ip_list.Set_Array(player_ip_information);//测试ip赋值
+                // System.out.println("ip赋值");
             }
         });
         panel.add(button_start);
@@ -166,7 +175,7 @@ public class Room extends JFrame {
         button_ready = new JButton("准备");
         button_ready.addActionListener(new ActionListener() {
             public void actionPerformed(final ActionEvent e) {
-                MaintainArray.ip_list.Set_Array(player_ip_information);//测试ip赋值
+                // MaintainArray.ip_list.Set_Array(player_ip_information);//测试ip赋值
                 System.out.println("ip赋值");
 
             }});
@@ -177,10 +186,15 @@ public class Room extends JFrame {
         button_exit = new JButton("返回大厅");
         button_exit.addActionListener(new ActionListener() {
             public void actionPerformed(final ActionEvent e) {
+                if(tag==0){
+                    //如果是房主退出房间，则所有人退出大厅
+                    Broad_Room("Triple/RoomDismiss");
+                }
+                
                 ban_use(false);// 禁用房间
                 roomsearch.ban_use(true);// 启用大厅
-
-                exit_room();// 退出房间，清空自己的数组。并通知房间里其他人，自己已退出房间
+                if(tag!=0)//如果不是房主
+                exit_room(true);// 退出房间，清空自己的数组。并通知房间里其他人，自己已退出房间
 
             }
 
@@ -244,6 +258,9 @@ public class Room extends JFrame {
                     Check_Join(rs, ip);// 查看是否是加入信息
                     Check_IP(rs, ip);// 借助别人刷新自己IP
                     Check_Chat(rs, ip);
+                    Check_Exit(rs,ip);
+                    Check_Dismiss(rs,ip);
+                    Check_ID(rs,ip);
                     // // String split[] = rs.split(" ");
                     // System.out.println(split[0]);
                     System.out.println("房间received: " + rs);
@@ -276,31 +293,31 @@ public class Room extends JFrame {
                 String spl[] = msg.split("/");
                 if (spl[0].equals("Triple")) {// 如果是游戏信息
                     if (spl[1].equals("JoinRoom")) {// 如果是房间加入请求
-                        if (spl[2].equals(player_ip_information.get(0))) {// 如果申请加入的IP等于自己的IP
-                            player_ip_information.set(0, spl[2]);// ！！！！要求发出加入请求时，将房间ip发回来
+                        if (spl[2].equals(MaintainArray.ip_list.get(0))) {// 如果申请加入的IP等于自己的IP
+                            MaintainArray.ip_list.set(0, spl[2]);// ！！！！要求发出加入请求时，将房间ip发回来
 
                             Send_Msg(ip, "Triple/ConfirmJoin/" + host_name, 1235);// 向1235端口发送确认收到加入房间的信息
                             // 目标大厅在收到comfirm过后，不再接收其他房间的confirm
 
                             // 将加入的玩家信息添加到玩家列表中
+                            
+                            MaintainArray.ip_list.add(ip);
                             player_name_information.add(spl[3]);
-                            player_ip_information.add(ip);
+                            // // 向加入的玩家发房间玩家明细
+                            // String RoomNameDetail = "";
+                            // for (int i = 0; i < player_name_information.size(); i++) {
+                            //     RoomNameDetail = RoomNameDetail + player_name_information.get(i) + "/";
+                            // }
+                            // Send_Msg(ip, "Triple/RoomNameDetail/" + RoomNameDetail, 1235);// 向目标发房间名字明细
+                            // System.out.println("向" + ip + "发送房间name信息:" + RoomNameDetail);
 
-                            // 向加入的玩家发房间玩家明细
-                            String RoomNameDetail = "";
-                            for (int i = 0; i < player_name_information.size(); i++) {
-                                RoomNameDetail = RoomNameDetail + player_name_information.get(i) + "/";
-                            }
-                            Send_Msg(ip, "Triple/RoomNameDetail/" + RoomNameDetail, 1235);// 向目标发房间名字明细
-                            System.out.println("向" + ip + "发送房间name信息:" + RoomNameDetail);
-
-                            // 向加入的玩家发房间ip明细
-                            String RoomIPDetail = "";
-                            for (int i = 0; i < player_ip_information.size(); i++) {
-                                RoomIPDetail = RoomIPDetail + player_ip_information.get(i) + "/";
-                            }
-                            Send_Msg(ip, "Triple/RoomIPDetail/" + RoomIPDetail, 1235);// 向目标发IP名字明细
-                            System.out.println("向" + ip + "发送房间ip信息" + RoomIPDetail);
+                            // // 向加入的玩家发房间ip明细
+                            // String RoomIPDetail = "";
+                            // for (int i = 0; i < MaintainArray.ip_list.size(); i++) {
+                            //     RoomIPDetail = RoomIPDetail + MaintainArray.ip_list.get(i) + "/";
+                            // }
+                            // Send_Msg(ip, "Triple/RoomIPDetail/" + RoomIPDetail, 1235);// 向目标发IP名字明细
+                            // System.out.println("向" + ip + "发送房间ip信息" + RoomIPDetail);
                             // 目标大厅在收到ip明细后，立即禁用大厅，启用房间
 
                             // 更新房间的显示
@@ -313,6 +330,8 @@ public class Room extends JFrame {
 
                             // 房间人数加1
 
+                            //通知所有玩家自己的序号是多少
+                            num_id_assign();
                         }
 
                     }
@@ -326,7 +345,7 @@ public class Room extends JFrame {
                 String spl[] = msg.split("/");
                 if (spl[0].equals("Triple")) {// 如果是游戏信息
                     if (spl[1].equals("IPConfirm")) {// 如果是房间加入请求
-                        player_ip_information.set(0, spl[2]);// ！！！！要求发出加入请求时，将房间ip发回来
+                        MaintainArray.ip_list.set(0, spl[2]);// ！！！！要求发出加入请求时，将房间ip发回来
                         my_IP = spl[2];
                         fresh_table();// 刷新一下表格
                     }
@@ -345,6 +364,49 @@ public class Room extends JFrame {
                     }
                 }
             }
+        }
+        
+        void Check_Dismiss(String msg,String ip){
+            if (in_use) {// 如果房间启用
+                String spl[] = msg.split("/");
+                if (spl[0].equals("Triple")) {// 如果是游戏信息
+                    if (spl[1].equals("RoomDismiss")) {// 如果是房间解散
+                        ban_use(false);// 禁用房间
+                        roomsearch.ban_use(true);// 启用大厅
+                        exit_room(false);// 退出房间，清空自己的数组。并通知房间里其他人，自己已退出房间
+                        
+                    }
+                }
+            }
+        }
+        
+        void Check_Exit(String msg,String ip){//判断是否是退出房间信息
+            if (in_use) {// 如果房间启用
+                String spl[] = msg.split("/");
+                if (spl[0].equals("Triple")) {// 如果是游戏信息
+                    if (spl[1].equals("ExitRoom")) {// 如果是房间解散
+                        int Exiter=Integer.valueOf(spl[2]) ;//退出的人的ID
+                            System.out.println(player_name_information.get(Exiter)+"离开了房间");
+                            MaintainArray.ip_list.remove(Exiter);
+                            player_name_information.remove(Exiter);
+                            fresh_table();
+                                
+                                
+                            
+                        
+                    }
+                }
+            }
+        }
+    
+        void Check_ID(String msg,String ip){//是否是通知改ID的消息
+            
+                String spl[] = msg.split("/");
+                if (spl[0].equals("Triple")) {// 如果是游戏信息
+                    if (spl[1].equals("NumID")) {// 如果是房间ID信息
+                        num_id=Integer.valueOf(spl[2]);//给自己的ID赋值
+                    }
+                }
         }
     }
 
@@ -375,7 +437,7 @@ public class Room extends JFrame {
         for (int i = 0; i < player_name_information.size(); i++) {
             Vector<String> hang = new Vector<String>();
             hang.add(player_name_information.get(i));
-            hang.add(player_ip_information.get(i));// ip
+            hang.add(MaintainArray.ip_list.get(i));// ip
             rowData.add(hang);
         }
         DefaultTableModel model = new DefaultTableModel(rowData, columnNames) {
@@ -407,47 +469,47 @@ public class Room extends JFrame {
         return table;
     }
 
-    // 房间信息同步机制
-    class Synchronization extends Thread {
-        String name_info = "";
-        String ip_info = "";
+    /* // 房间信息同步机制
+    // class Synchronization extends Thread {
+    //     String name_info = "";
+    //     String ip_info = "";
 
-        public Synchronization() {
+    //     public Synchronization() {
 
-        }
+    //     }
 
-        // 向房间内的玩家隔一段时间发送一次房间信息，接收到后更新为自己的信息
-        public void run() {
-            while (true) {
-                // 向加入的玩家发房间玩家明细
-                if (player_name_information.size() > 1 && in_use) {
-                    for (int i = 0; i < player_name_information.size(); i++) {
-                        name_info = name_info + player_name_information.get(i) + "/";
-                    }
-                    for (int i = 0; i < player_ip_information.size(); i++) {
-                        ip_info = ip_info + player_ip_information.get(i) + "/";
-                    }
-                    for (int i = 0; i < player_ip_information.size(); i++) {
-                        Send_Msg(player_ip_information.get(i), "Triple/RoomNameSynchronization/" + name_info, 1234);// 向目标发房间名字明细
-                        System.out.println("向" + player_ip_information.get(i) + "发送房间name信息:" + name_info);
-                        Send_Msg(player_ip_information.get(i), "Triple/RoomIPSynchronization/" + ip_info, 1235);// 向目标发IP名字明细
-                        System.out.println("向" + player_ip_information.get(i) + "发送房间ip信息" + ip_info);
-                    }
-                }
+    //     // 向房间内的玩家隔一段时间发送一次房间信息，接收到后更新为自己的信息
+    //     public void run() {
+    //         while (true) {
+    //             // 向加入的玩家发房间玩家明细
+    //             if (player_name_information.size() > 1 && in_use) {
+    //                 for (int i = 0; i < player_name_information.size(); i++) {
+    //                     name_info = name_info + player_name_information.get(i) + "/";
+    //                 }
+    //                 for (int i = 0; i < player_ip_information.size(); i++) {
+    //                     ip_info = ip_info + player_ip_information.get(i) + "/";
+    //                 }
+    //                 for (int i = 0; i < player_ip_information.size(); i++) {
+    //                     Send_Msg(player_ip_information.get(i), "Triple/RoomNameSynchronization/" + name_info, 1234);// 向目标发房间名字明细
+    //                     System.out.println("向" + player_ip_information.get(i) + "发送房间name信息:" + name_info);
+    //                     Send_Msg(player_ip_information.get(i), "Triple/RoomIPSynchronization/" + ip_info, 1235);// 向目标发IP名字明细
+    //                     System.out.println("向" + player_ip_information.get(i) + "发送房间ip信息" + ip_info);
+    //                 }
+    //             }
 
-                // 向加入的玩家发房间ip明细
-                try {
-                    Thread.sleep(5000);
-                } // 每5000ms发一次
-                catch (Exception e) {
-                }
-                ;
+    //             // 向加入的玩家发房间ip明细
+    //             try {
+    //                 Thread.sleep(5000);
+    //             } // 每5000ms发一次
+    //             catch (Exception e) {
+    //             }
+    //             ;
 
-                name_info = "";
-                ip_info = "";
-            }
-        }
-    }
+    //             name_info = "";
+    //             ip_info = "";
+    //         }
+    //     }
+    // }*/
 
     // 初始化作客人时房间的参数
     public void init_guest() {
@@ -465,8 +527,8 @@ public class Room extends JFrame {
 
     // 向全房间通告
     void Broad_Room(String msg) {// 向全房间通告；
-        for (int i = 0; i < player_ip_information.size(); i++) {
-            Send_Msg(player_ip_information.get(i), msg, 1234);
+        for (int i = 0; i < MaintainArray.ip_list.size(); i++) {
+            Send_Msg(MaintainArray.ip_list.get(i), msg, 1234);
         }
 
     }
@@ -475,33 +537,47 @@ public class Room extends JFrame {
     public void fresh_table() {
         // 将表格所有的信息更新为现在数组里的信息
         DefaultTableModel model = (DefaultTableModel) jt.getModel();
-        for (int i = 0; i < player_ip_information.size(); i++) {
+        for (int i = 0; i < MaintainArray.ip_list.size(); i++) {
             if (i < model.getRowCount()) {
                 model.setValueAt(player_name_information.get(i), i, 0);// 将表格名字改为自己的名字
-                model.setValueAt(player_ip_information.get(i), i, 1);// 将表格名字改为自己的名字
+                model.setValueAt(MaintainArray.ip_list.get(i), i, 1);// 将表格名字改为自己的名字
             } else {
                 Vector<String> hang = new Vector<String>();
                 hang.add(player_name_information.get(i));
-                hang.add(player_ip_information.get(i));
+                hang.add(MaintainArray.ip_list.get(i));
                 model.addRow(hang);
             }
 
         }
+        for(int i=MaintainArray.ip_list.size();i<model.getRowCount();i++){
+            model.removeRow(i);
+        }
     }
 
     // 退出
-    public void exit_room() {
+    public void exit_room(boolean broad) {
         // 退出房间
         // 还原房间列表
-        Broad_Room("Triple/ExitRoom/" + my_name);
+        if(broad)
+            Broad_Room("Triple/ExitRoom/" + num_id);
 
         // 当手动退出时，清空自己的数组
-        player_ip_information.clear();
+        MaintainArray.ip_list.clear();
         player_name_information.clear();
-        player_ip_information = new ArrayList<String>();
-        player_name_information = new ArrayList<String>();
-        player_ip_information.add(my_IP);
+        // player_ip_information = new ArrayList<String>();
+        // player_name_information = new ArrayList<String>();
+
+        MaintainArray.ip_list.add(my_IP);
         player_name_information.add(host_name);
+
+        clear_chat();//清空发言
+        fresh_table();
+        num_id=0;
+    }
+
+    void clear_chat(){//清空发言
+        chat_Area.selectAll();
+        chat_Area.replaceSelection("等待发言");
     }
 
     // 发言
@@ -512,4 +588,10 @@ public class Room extends JFrame {
         
     }
 
+    //通知房间内序号
+    void num_id_assign(){
+        for(int i=1;i<MaintainArray.ip_list.size();i++){
+            Send_Msg(MaintainArray.ip_list.get(i),"Triple/NumID/"+i, 1234);
+        }
+    }
 }
